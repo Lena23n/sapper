@@ -1,9 +1,14 @@
+body {
+	text-align: center;
+}
+
 #canvas {
 	margin: 30px auto 0;
+	display: inline-block;
 }
 
 canvas {
-	border: 2px solid grey;
 	display: block;
 	margin: 0 auto;
+	background: #222222;
 }

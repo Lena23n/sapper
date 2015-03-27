@@ -1,277 +1,321 @@
-var controller;
-
-var CONST = {
-	EMPTY: 0,
-	MINE: 9,
-	CLOSED: 10,
-	MINE_BOOM: 11,
-	FLAG: 12,
-	FLAG_MISTAKE: 13,
-	GAME_OVER: 'over',
-	WIN: 'win',
-	PLAY: 'play'
-};
-
-function Module() {
-	this.firstClick = true;
-	this.play = true;
-	this.gameState;
-	this.flags = this.minesAmount = 40;
-	this.fieldSide = 16;
-	this.field = [];
+function Game (id) {
+	this.id = id;
+	this.drawer = new Drawer();
+	this.holder = null;
+	this.game = [];
 	this.view = [];
-	this.drawer = new DrawerCanvas();
-	//this.drawer = new DrawerDOM();
+	this.mineCount = 8;
+	this.fieldSide = 10;
+	this.cellState = {
+		EMPTY: 0,
+		MINE: 9,
+		OPEN: 10,
+		CLOSE: 11
+	}
 }
 
-// Field generators
-Module.prototype.generateEmptyField = function () {
-	var i, j;
+Game.prototype = {
+	init : function () {
+		var self = this;
 
-	for (i = 0; i < this.fieldSide + 2; i++) {
-		this.field[i] = [];
-		this.view[i] = [];
-		for (j = 0; j < this.fieldSide + 2; j++) {
-			this.field[i][j] = CONST.EMPTY;
-			this.view[i][j] = CONST.CLOSED;
+		this.holder = document.getElementById(this.id);
+
+		this.holder.addEventListener('click', function (e) {
+			self.leftClickListener(e);
+		});
+
+		this.holder.addEventListener('contextmenu', function (e) {
+			e.preventDefault();
+		});
+
+		this.startGame();
+	},
+
+	startGame : function () {
+		this.clearHolder();
+		this.createField();
+	},
+
+	createField : function () {
+		this.drawer.createField(this.id, this.fieldSide, this.cellState);
+
+		this.createEmptyGameField();
+		this.putMine();
+		this.calculateSiblingMines();
+
+		this.drawer.draw(this.view, this.fieldSide);
+	},
+
+	createEmptyGameField : function () {
+		var i,
+			numberOfCells = Math.pow(this.fieldSide, 2);
+
+		for( i = 0; i < numberOfCells; i++) {
+			this.game[i] = this.cellState.EMPTY;
+			this.view[i] = this.cellState.EMPTY;
 		}
-	}
-};
 
-Module.prototype.generateField = function (startX, startY) {
-	var mines, x, y, result, i, j, k, t;
+		//new version
+		//var i,j;
+		//
+		//for (i = 0; i < this.fieldSide; i++) {
+		//	this.game[i] = [];
+		//	for (j = 0; j < this.fieldSide; j++) {
+		//		this.game[i][j] = this.cellState.EMPTY;
+		//	}
+		//}
 
-	// Creating an empty field with a larger field
-	this.generateEmptyField();
+	},
 
-	// Filling in this field mines
-	mines = this.minesAmount;
-	while (mines > 0) {
-		x = Math.floor(Math.random() * (this.fieldSide)) + 1;
-		y = Math.floor(Math.random() * (this.fieldSide)) + 1;
-		if ((x < startX - 1 || x > startX + 1) || (y < startY - 1 || y > startY + 1) && this.field[x][y] === 0) {
-			this.field[x][y] = CONST.MINE;
-			mines--;
+	putMine : function () {
+		var i,
+			mines = this.mineCount,
+			numberOfCells = Math.pow(this.fieldSide, 2);
+
+		while (mines > 0) {
+			i = Math.floor(Math.random()*numberOfCells);
+
+			if (this.game[i] === this.cellState.EMPTY) {
+				this.game[i] = this.cellState.MINE;
+				mines--;
+				console.log(i)
+			}
 		}
-	}
 
-	// Calculating the number of mines around each cell
-	for (i = 1; i <= this.fieldSide; i++) {
-		for (j = 1; j <= this.fieldSide; j++) {
-			if (this.field[i][j] !== CONST.MINE) {
-				result = 0;
-				for (k = i - 1; k < i + 2; k++) {
-					for (t = j - 1; t < j + 2; t++) {
-						if (this.field[k][t] === CONST.MINE && k !== 0 && t !== 0) {
-							result++;
-						}
+		//new version
+		//var  x, y,
+		//	mines = this.mineCount;
+		//
+		//while(mines > 0) {
+		//	x = Math.floor((Math.random()*this.fieldSide));
+		//	y = Math.floor((Math.random()*this.fieldSide));
+		//
+		//	if (this.game[x][y] === 0) {
+		//		this.game[x][y] = this.cellState.MINE;
+		//
+		//		console.log(x, y);
+		//		mines--;
+		//	}
+		//}
+
+
+	},
+
+	calculateSiblingMines : function () {
+		var i,
+			j;
+
+		for (i = 0; i < this.game.length; i++) {
+			if (this.game[i] !== this.cellState.MINE) {
+				var result = 0,
+					siblings = this.findSiblings(i);
+
+				for (j = 0; j < siblings.length; j++) {
+					if (siblings[j] === true) {
+						result++;
 					}
 				}
-				this.field[i][j] = result;
+
+				this.game[i] = result;
 			}
 		}
+	},
+
+	findSiblings : function (i) {
+		var w = this.fieldSide,
+			mine = this.cellState.MINE,
+			currentCellX = i%w,
+			currentCellY = Math.floor(i/w);
+
+		//position difference between current cell and sibling cell
+		//var findSibling2 = {
+		//	left : [-1, 0],
+		//	right : [1, 0],
+		//	top : [0, -1],
+		//	bottom : [0, 1],
+		//	topLeft : [-1, -1],
+		//	topRight : [1, -1],
+		//	bottomLeft : [-1, 1],
+		//	bottomRight : [1, 1]
+		//};
+		//
+		////position difference in array between current cell and sibling cell
+		//var findSibling = {
+		//	left: -1,
+		//	right: 1,
+		//	top: 10,
+		//	bottom: 10,
+		//	topLeft : -11,
+		//	topRight : -9,
+		//	bottomLeft : 9,
+		//	bottomRight : 11
+		//};
+
+		//sibling has the same row or column
+		var isSiblingRow = {
+			left : Math.floor((i-1)/w) == currentCellY,
+			topLeft : Math.abs((Math.floor((i-w+1)/w) - currentCellY)) == 1,
+			top : (i-w)%w == currentCellX,
+			topRight : Math.abs((Math.floor((i-w-1)/w) - currentCellY)) == 1,
+			right : Math.floor((i+1)/w) == currentCellY,
+			bottomRight: Math.abs((Math.floor((i+w+1)/w) - currentCellY)) == 1,
+			bottom : (i+w)%w == currentCellX,
+			bottomLeft: Math.abs((Math.floor((i+w-1)/w) - currentCellY)) == 1
+		};
+
+
+		var isSiblingadsfsdf = {
+			left : [i - 1],
+			topLeft: [i - w + 1 ],
+			top : [i - w],
+			topRight: [i - w - 1],
+			right : [i+1],
+			bottomRight: [i + w + 1],
+			bottom : [i + w],
+			bottomLeft: [i + w - 1]
+		};
+
+		//sibling cell has a MINE
+		var isMineSibling = {
+			left : isSibling.left && this.game[i - 1 ] == mine,
+			topLeft: isSibling.topLeft && this.game[i - w + 1 ] == mine,
+			top : isSibling.top && this.game[i - w] == mine,
+			topRight: isSibling.topRight && this.game[i - w - 1 ] == mine,
+			right : isSibling.right && this.game[i+1] == mine,
+			bottomRight: isSibling.bottomRight && this.game[i + w + 1 ] == mine,
+			bottom : isSibling.bottom && this.game[i + w] == mine,
+			bottomLeft: isSibling.bottomLeft && this.game[i + w - 1 ] == mine
+		};
+
+		//array with checked siblings whether they have MINE
+		var siblingsMineArray = [
+			isMineSibling.left,
+			isMineSibling.topLeft,
+			isMineSibling.top,
+			isMineSibling.topRight,
+			isMineSibling.right,
+			isMineSibling.bottomRight,
+			isMineSibling.bottom,
+			isMineSibling.bottomLeft
+		];
+
+		return siblingsMineArray;
+	},
+
+	clearHolder : function () {
+		this.holder.innerHTML = "";
+	},
+
+	leftClickListener : function (e) {
+		var clickedCellPosition = this.defineCellPosition(e);
+
+		this.openClickedCell(clickedCellPosition.x, clickedCellPosition.y);
+
+	},
+
+	defineCellPosition : function (e) {
+		var offSetX, offSetY, currentX, currentY, x, y;
+
+		offSetX = this.holder.offsetLeft;
+		offSetY = this.holder.offsetTop;
+		currentX = e.clientX - offSetX;
+		currentY = e.clientY - offSetY;
+
+		var result = {
+			x : Math.floor(currentX/this.drawer.cellSize.w),
+			y : Math.floor(currentY/this.drawer.cellSize.h)
+		};
+
+		return result;
+	},
+
+	openClickedCell : function (x , y) {
+		var cellNumberInArray = y*this.fieldSide + x;
+
+		if (this.game[cellNumberInArray] === this.cellState.EMPTY) {
+			this.openSiblingsCells(x, y);
+		} else {
+			this.view[cellNumberInArray] = this.game[cellNumberInArray];
+		}
+
+		this.drawer.draw(this.view, this.fieldSide);
+	},
+
+	openSiblingsCells : function (x, y) {
+
+		var i = y*this.fieldSide + x,
+			w = this.fieldSide;
+
+
+		var isSibling = {
+			left : [i - 1 ],
+			topLeft: [i - w + 1 ],
+			top : [i - w],
+			topRight: [i - w - 1 ],
+			right : [i+1],
+			bottomRight: [i + w + 1 ],
+			bottom : [i + w],
+			bottomLeft: [i + w - 1 ]
+		};
+
+		//var result = 0,
+		//	j,
+		//	siblings = this.findSiblings(cellNumberInArray);
+		//
+		//for (j = 0; j < siblings.length; j++) {
+		//	if (siblings[j] !== true) {
+		//		this.view[i] = this.cellState.OPEN;
+		//		this.view[isSibling[j]] = this.cellState.OPEN;
+		//	}
+		//}
+
+
+
+		this.view[i] = this.cellState.OPEN;
+
+		//while ( x >= 0) {
+		//	var cellNumberInArray = y*this.fieldSide + x;
+		//
+		//	switch (this.game[cellNumberInArray]) {
+		//		case this.cellState.EMPTY:
+		//			this.view[cellNumberInArray] = this.cellState.OPEN;
+		//			break;
+		//		case this.cellState.MINE:
+		//			x = 0;
+		//			break;
+		//		default:
+		//			this.view[cellNumberInArray] = this.game[cellNumberInArray];
+		//	}
+		//	x--;
+		//}
+		//
+		//while ( x <= 10) {
+		//	var cellNumberInArray = y*this.fieldSide + x;
+		//
+		//	switch (this.game[cellNumberInArray]) {
+		//		case this.cellState.EMPTY:
+		//			this.view[cellNumberInArray] = this.cellState.OPEN;
+		//			break;
+		//		case this.cellState.MINE:
+		//			x = 10;
+		//			break;
+		//		default:
+		//			this.view[cellNumberInArray] = this.game[cellNumberInArray];
+		//	}
+		//	x++;
+		//}
+
+
+
 	}
+
 };
 
-// Logic
-Module.prototype.msgToUser = function () {
-	switch (this.gameState) {
-		case CONST.GAME_OVER :
-		{
-			if (confirm("Game over :( New game?")) {
-				controller.newGame();
-			}
-			break;
-		}
-		case CONST.WIN :
-		{
-			if (confirm("You win!!! :) New game?")) {
-				controller.newGame();
-			}
-			break;
-		}
-		default :
-		{
-			//NOP
-			break;
-		}
-	}
-};
+function pageLoaded () {
+	var game = new Game('canvas');
 
-Module.prototype.flagToggle = function (x, y) {
-	switch (this.view[x][y]) {
-		case CONST.CLOSED :
-		{
-			if (this.flags > 0) {
-				this.view[x][y] = CONST.FLAG;
-				this.flags--;
-			}
-			break;
-		}
-		case CONST.FLAG :
-		{
-			this.view[x][y] = CONST.CLOSED;
-			this.flags++;
-			break;
-		}
-		default :
-		{
-			console.log('Error: flagToggle');
-			break;
-		}
-	}
-};
+	game.init();
+}
 
-Module.prototype.viewChecker = function () {
-	var continueGame = false;
-	for (var i = 1; i < this.view.length - 1; i++) {
-		for (var j = 1; j < this.view.length - 1; j++) {
-			if (this.view[i][j] === CONST.CLOSED) {
-				continueGame = true;
-				break;
-			}
-		}
-	}
-	if (!continueGame) {
-		this.gameState = CONST.WIN;
-	}
-};
+window.addEventListener('load', pageLoaded);
 
-Module.prototype.clickChecker = function (x, y) {
-	switch (this.field[x][y]) {
-		case CONST.EMPTY :
-			this.openNearbyEmptyCells(x, y);
-			break;
-		case CONST.MINE :
-			this.mineBang(x, y);
-			break;
-		default :
-			this.view[x][y] = this.field[x][y];
-			if (this.flags === 0) {
-				this.viewChecker();
-			}
-			break;
-	}
-};
-
-Module.prototype.openNearbyEmptyCells = function (x, y) {
-	// Open nearby cells with numbers
-	if (this.field[x][y] > 0 && this.field[x][y] < CONST.MINE) {
-		this.view[x][y] = this.field[x][y];
-	}
-	// Open nearby empty cells
-	if (this.view[x][y] !== CONST.EMPTY && this.field[x][y] === CONST.EMPTY) {
-		this.view[x][y] = CONST.EMPTY;
-		for (var i = x - 1; i < x + 2; i++) {
-			for (var j = y - 1; j < y + 2; j++) {
-				if ((x > 0 && y > 0) && (x <= this.fieldSide && y <= this.fieldSide)) {
-					this.openNearbyEmptyCells(i, j);
-				}
-			}
-		}
-	}
-};
-
-Module.prototype.mineBang = function (x, y) {
-	var i, j;
-
-	for (i = 1; i < this.view.length; i++) {
-		for (j = 1; j < this.view.length; j++) {
-			if (this.field[i][j] === CONST.MINE && this.view[i][j] !== CONST.FLAG) {
-				this.view[i][j] = CONST.MINE;
-			} else if (this.field[i][j] !== CONST.MINE && this.view[i][j] === CONST.FLAG) {
-				this.view[i][j] = CONST.FLAG_MISTAKE;
-			}
-		}
-	}
-	this.view[x][y] = CONST.MINE_BOOM;
-	this.gameState = CONST.GAME_OVER;
-};
-
-// Util
-Module.prototype.defineCellPosition = function (x, y) {
-	var xPosition, yPosition;
-
-	xPosition = x / this.drawer.cellSize;
-	yPosition = y / this.drawer.cellSize;
-	xPosition = xPosition - (xPosition % 1) + 1;
-	yPosition = yPosition - (yPosition % 1) + 1;
-	var result = {
-		x: xPosition,
-		y: yPosition
-	};
-	return result;
-};
-
-// Listeners
-Module.prototype.clickListener = function () {
-	var cellPosition;
-	var self = this;
-	document.getElementById('intercept').addEventListener("click", function (e) {
-		if (self.gameState === CONST.PLAY) {
-			var side = self.drawer.cellSize * self.fieldSide;
-			if (e.x <= side && e.y <= side) {
-				cellPosition = controller.defineCellPosition(e.x, e.y);
-				if (controller.firstClick) {
-					controller.generateField(cellPosition.x, cellPosition.y);
-					controller.firstClick = false;
-				}
-				self.clickChecker(cellPosition.x, cellPosition.y);
-				self.drawer.draw(self.fieldSide, self.view);
-			}
-		}
-		self.msgToUser();
-	}, false);
-};
-
-Module.prototype.rightClickListener = function () {
-	var side;
-	var self = this;
-	document.getElementById('intercept').addEventListener("contextmenu", function (e) {
-		e.preventDefault();
-		if (self.gameState === CONST.PLAY) {
-			side = self.drawer.cellSize * self.fieldSide;
-			if (e.x <= side && e.y <= side) {
-				var cellPosition = controller.defineCellPosition(e.x, e.y);
-				if (!controller.firstClick) {
-					self.flagToggle(cellPosition.x, cellPosition.y);
-					self.drawer.draw(self.fieldSide, self.view);
-					if (self.flags === 0) {
-						self.viewChecker();
-					}
-				}
-			}
-		}
-		self.msgToUser();
-		return false;
-	}, false);
-};
-
-Module.prototype.resizeListener = function () {
-	var self = this;
-	window.addEventListener('resize', function () {
-		self.drawer.resizeAndDraw(self.fieldSide, self.view);
-	}, false);
-};
-
-// Gameplay
-Module.prototype.startGame = function () {
-	this.gameState = CONST.PLAY;
-	this.generateEmptyField();
-	this.drawer.init(this.fieldSide, this.view);
-	this.clickListener();
-	this.rightClickListener();
-	this.resizeListener();
-	controller.firstClick = true;
-};
-
-Module.prototype.newGame = function () {
-	this.gameState = CONST.PLAY;
-	this.flags = this.minesAmount;
-	this.generateEmptyField();
-	this.drawer.draw(this.fieldSide, this.view);
-	controller.firstClick = true;
-};
-
-controller = new Module();
-controller.startGame();
