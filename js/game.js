@@ -9,8 +9,7 @@ function Game(id) {
 	this.cellState = {
 		EMPTY: 0,
 		MINE: 9,
-		OPEN: 10,
-		CLOSE: 11
+		OPEN: 10
 	}
 }
 
@@ -107,41 +106,48 @@ Game.prototype = {
 		for (i = 0; i < this.game.length; i++) {
 			if (this.game[i] !== this.cellState.MINE) {
 				var result = 0,
-					siblingMines = this.findSiblings(i);
-				//	siblingMines = this.findSiblingMines(i);
+					siblingMines = this.findSiblingMines(i);
 
-				//console.log(siblingMines)
-				//
-				//for (j = 0; j < siblingMines.length; j++) {
-				//
-				//	console.log(siblingMines[j]);
-				//	//if (siblingMines[j] === true) {
-				//	//	result++;
-				//	//}
-				//}
+				for (j = 0; j < siblingMines.length; j++) {
+					if (siblingMines[j] == true) {
+						result++;
+					}
+				}
 
 				this.game[i] = result;
 			}
 		}
 	},
 
+	defineSiblingIndex : function (i) {
+		var w = this.fieldSide,
+			result;
+		//sibling cell index
+		var sibling = {
+			left: i - 1,
+			topLeft: i - w - 1,
+			top: (i - w),
+			topRight: i - w + 1,
+			right: i + 1,
+			bottomRight: i + w + 1,
+			bottom: i + w,
+			bottomLeft: i + w - 1
+		};
+
+		return sibling;
+	},
+
 	findSiblingMines: function (i) {
 		var mine = this.cellState.MINE,
-			siblingValues = this.findSiblings(i),
-			sibling = this.checkSiblings(siblingValues);
-
+			sibling = this.findSiblings(i),
+			siblingIndex = this.defineSiblingIndex(i),
+			isMineSibling = {};
 
 		//sibling cell has a MINE
-		var isMineSibling = {
-			left: sibling.left == mine,
-			topLeft: sibling.topLeft == mine,
-			top: sibling.top == mine,
-			topRight: sibling.topRight == mine,
-			right: sibling.right == mine,
-			bottomRight: sibling.bottomRight == mine,
-			bottom: sibling.bottom == mine,
-			bottomLeft: sibling.bottomLeft == mine
-		};
+
+		for (var key in sibling) {
+			isMineSibling[key] = sibling[key] && this.game[siblingIndex[key]] == mine;
+		}
 
 		//array with checked siblings whether they have a MINE
 		var siblingsMineArray = [
@@ -162,29 +168,13 @@ Game.prototype = {
 	findSiblings: function (i) {
 		var w = this.fieldSide,
 			result,
-			sibling,
-			isSiblingRow,
-			isSiblingColumn,
-			isSiblingDiagonal,
-			isSiblingCell,
-			compareCoords,
-			coordsDifference,
+			sibling = this.defineSiblingIndex(i),
+			difference,
 			currentCellX = i % w,
 			currentCellY = Math.floor(i / w);
 
-		//sibling cell index
-		sibling = {
-			left: i - 1,
-			topLeft: i - w - 1,
-			top: (i - w),
-			topRight: i - w + 1,
-			right: i + 1,
-			bottomRight: i + w + 1,
-			bottom: i + w,
-			bottomLeft: i + w - 1
-		};
 
-		coordsDifference = {
+		difference = {
 			left: [-1, 0],
 			topLeft: [-1, -1],
 			top: [0, -1],
@@ -195,108 +185,56 @@ Game.prototype = {
 			bottomLeft: [-1, 1]
 		};
 
+		//Sibling cell's X and Y
 		var map = {};
 
 		for (var key in sibling) {
 			map[key] = [];
-			map[key].push(sibling[key] % w);
-			map[key].push(Math.floor(sibling[key] / w));
+			map[key].push((sibling[key] % w) - currentCellX);
+			map[key].push((Math.floor(sibling[key] / w) - currentCellY));
 		}
 
-
-		var realDifference = {};
+		var isSibling = {};
 
 		for (var obj in map) {
-			realDifference[obj] = (map[obj][0] == coordsDifference[obj][0]) && (map[obj][1] == coordsDifference[obj][1])
+			isSibling[obj] = (map[obj][0] == difference[obj][0]) && (map[obj][1] == difference[obj][1]);
 		}
 
-		//console.log(i, realDifference);
-
-		compareCoords = {
-
-		};
-
-		//isSiblingCell = {
-		//	//left: compareCoords.leftX && compareCoords.leftY,
-		//	left: this.game[sibling.left] && compareCoords.leftY,
-		//	topLeft: this.game[sibling.topLeft] && compareCoords.topLeftY,
-		//	top: compareCoords.topX && compareCoords.topY,
-		//	topRight: compareCoords.topRightX && compareCoords.topRightY,
-		//	right: compareCoords.rightX && compareCoords.rightY,
-		//	bottomRight: compareCoords.bottomRightX && compareCoords.bottomRightY,
-		//	bottom: compareCoords.bottomX && compareCoords.bottomY,
-		//	bottomLeft: compareCoords.bottomLeftX && compareCoords.bottomLeftY
-		//};
-		//
-		//result = isSiblingCell;
-		//return result;
-
-		////sibling has the same row
-		//isSiblingRow = {
-		//	left: Math.floor((sibling.left) / w) == currentCellY,
-		//	right: Math.floor((sibling.right) / w) == currentCellY
-		//};
-		//
-		////sibling has the same Column
-		//isSiblingColumn = {
-		//	top: (sibling.top) % w == currentCellX,
-		//	bottom: (sibling.bottom) % w == currentCellX
-		//};
-		//
-		////sibling diagonal (correct column and row)
-		//isSiblingDiagonal = {
-		//	topLeft: Math.abs((Math.floor((sibling.topLeft) / w) - currentCellY)) == 1,
-		//	topRight: Math.abs((Math.floor((sibling.topRight) / w) - currentCellY)) == 1,
-		//	bottomRight: Math.abs((Math.floor((sibling.bottomRight) / w) - currentCellY)) == 1,
-		//	bottomLeft: Math.abs((Math.floor((sibling.bottomLeft) / w) - currentCellY)) == 1
-		//};
-
-		////gives sibling cells
-		//isSiblingCell = {
-		//	left: isSiblingRow.left && this.game[sibling.left],
-		//	topLeft: isSiblingDiagonal.topLeft && this.game[sibling.topLeft],
-		//	top: isSiblingColumn.top && this.game[sibling.top],
-		//	topRight: isSiblingDiagonal.topRight && this.game[sibling.topRight],
-		//	right: isSiblingRow.right && this.game[sibling.right],
-		//	bottomRight: isSiblingDiagonal.bottomRight && this.game[sibling.bottomRight],
-		//	bottom: isSiblingColumn.bottom && this.game[sibling.bottom],
-		//	bottomLeft: isSiblingDiagonal.bottomLeft && this.game[sibling.bottomLeft]
-		//};
-
-		//result = [sibling, isSiblingRow, isSiblingColumn, isSiblingDiagonal];
-		//return result;
-	},
-
-	checkSiblings : function (values) {
-
-		var isSiblingCell,
-			result,
-			value;
-
-		//description of different types of values
-		value = {
-			sibling: [0],
-			row: [1],
-			column: [2],
-			diagonal: [3]
-		};
-
-
-		//gives sibling cells
-		isSiblingCell = {
-			left: values[value].left && this.game[sibling.left],
-			topLeft: isSiblingDiagonal.topLeft && this.game[sibling.topLeft],
-			top: isSiblingColumn.top && this.game[sibling.top],
-			topRight: isSiblingDiagonal.topRight && this.game[sibling.topRight],
-			right: isSiblingRow.right && this.game[sibling.right],
-			bottomRight: isSiblingDiagonal.bottomRight && this.game[sibling.bottomRight],
-			bottom: isSiblingColumn.bottom && this.game[sibling.bottom],
-			bottomLeft: isSiblingDiagonal.bottomLeft && this.game[sibling.bottomLeft]
-		};
-
-		result = isSiblingCell;
+		result = isSibling;
 		return result;
+
 	},
+
+	//checkSiblings : function (values) {
+	//
+	//	var isSiblingCell,
+	//		result,
+	//		value;
+	//
+	//	//description of different types of values
+	//	value = {
+	//		sibling: [0],
+	//		row: [1],
+	//		column: [2],
+	//		diagonal: [3]
+	//	};
+	//
+	//
+	//	//gives sibling cells
+	//	isSiblingCell = {
+	//		left: values[value].left && this.game[sibling.left],
+	//		topLeft: isSiblingDiagonal.topLeft && this.game[sibling.topLeft],
+	//		top: isSiblingColumn.top && this.game[sibling.top],
+	//		topRight: isSiblingDiagonal.topRight && this.game[sibling.topRight],
+	//		right: isSiblingRow.right && this.game[sibling.right],
+	//		bottomRight: isSiblingDiagonal.bottomRight && this.game[sibling.bottomRight],
+	//		bottom: isSiblingColumn.bottom && this.game[sibling.bottom],
+	//		bottomLeft: isSiblingDiagonal.bottomLeft && this.game[sibling.bottomLeft]
+	//	};
+	//
+	//	result = isSiblingCell;
+	//	return result;
+	//},
 
 	clearHolder: function () {
 		this.holder.innerHTML = "";
@@ -328,8 +266,10 @@ Game.prototype = {
 	openClickedCell: function (x, y) {
 		var cellNumberInArray = y * this.fieldSide + x;
 
-		if (this.game[cellNumberInArray] === this.cellState.EMPTY) {
-			this.openSiblingsCells(x, y);
+		if (this.game[cellNumberInArray] == this.cellState.EMPTY) {
+			var k = this.openSiblingCells(cellNumberInArray);
+				//this.wave(k);
+
 		} else {
 			this.view[cellNumberInArray] = this.game[cellNumberInArray];
 		}
@@ -337,51 +277,43 @@ Game.prototype = {
 		this.drawer.draw(this.view, this.fieldSide);
 	},
 
-	openSiblingsCells: function (x, y) {
+	openSiblingCells: function (i) {
+		var sibling = this.findSiblings(i),
+			siblingIndex = this.defineSiblingIndex(i),
+			mass = [];
 
-		var i = y * this.fieldSide + x,
-			sibling = this.findSiblings(i),
-			test = [],
-			j;
+		for (var key in sibling) {
+			if(sibling[key] === true && this.game[siblingIndex[key]] < 9 && this.view[siblingIndex[key]] !== this.cellState.OPEN) {
 
-		test = [
-			sibling.left,
-			sibling.topLeft,
-			sibling.top,
-			sibling.topRight,
-			sibling.right,
-			sibling.bottomRight,
-			sibling.bottom,
-			sibling.bottomLeft
-		];
+				if (this.game[siblingIndex[key]] == this.cellState.EMPTY) {
+					this.view[siblingIndex[key]] = this.cellState.OPEN;
 
-		for (j = 0; j < test.length; j++) {
-			if (test[j] !== this.cellState.MINE) {
+					mass.push(siblingIndex[key]);
 
+					this.openSiblingCells(siblingIndex[key]);
+
+				} else if (this.game[siblingIndex[key]] !== this.cellState.EMPTY) {
+					this.view[siblingIndex[key]] = this.game[siblingIndex[key]];
+				}
+				//mass.push(siblingIndex[key]);
 			}
 		}
-
-		//
-		//while (x > 0) {
-		//	var sibling = this.findSiblings(i);
-		//
-		//
-		//}
-		//var result = 0,
-		//	j,
-		//	siblings = this.findSiblings(cellNumberInArray);
-		//
-		//for (j = 0; j < siblings.length; j++) {
-		//	if (siblings[j] !== true) {
-		//		this.view[i] = this.cellState.OPEN;
-		//		this.view[isSibling[j]] = this.cellState.OPEN;
-		//	}
-		//}
-
-
 		this.view[i] = this.cellState.OPEN;
 
-	}
+		return mass;
+	}/*,
+
+	wave : function (k) {
+		var m = [];
+
+		for (var j = 0; j < k.length; j++) {
+			m.push(this.openSiblingCells(k[j]));
+			console.log(m);
+		}
+
+		k = m;
+		//this.wave(k);
+	}*/
 
 };
 

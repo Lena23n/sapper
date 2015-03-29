@@ -233,7 +233,7 @@ Game.prototype = {
 		var cellNumberInArray = y*this.fieldSide + x;
 
 		if (this.game[cellNumberInArray] === this.cellState.EMPTY) {
-			this.openSiblingsCells(x, y);
+			this.openSiblingCells(x, y);
 		} else {
 			this.view[cellNumberInArray] = this.game[cellNumberInArray];
 		}
@@ -241,7 +241,7 @@ Game.prototype = {
 		this.drawer.draw(this.view, this.fieldSide);
 	},
 
-	openSiblingsCells : function (x, y) {
+	openSiblingCells : function (x, y) {
 
 		var i = y*this.fieldSide + x,
 			w = this.fieldSide;
