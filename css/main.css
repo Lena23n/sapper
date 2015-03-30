@@ -1,10 +1,18 @@
 body {
 	text-align: center;
+	background: #3D4240;
 }
 
 #canvas {
 	margin: 30px auto 0;
 	display: inline-block;
+}
+
+#game-info {
+	margin-top: 20px;
+	font-size: 18px;
+	font-weight: bold;
+	color: #ffffff;
 }
 
 canvas {

@@ -1,15 +1,19 @@
-function Game(id) {
+function Game(id, gameInfoWrapId) {
 	this.id = id;
+	this.gameInfoWrapId = gameInfoWrapId;
 	this.drawer = new Drawer();
 	this.holder = null;
 	this.game = [];
 	this.view = [];
-	this.mineCount = 8;
+	this.mineCount = 12;
+	this.flagCount = this.mineCount;
 	this.fieldSide = 10;
 	this.cellState = {
 		EMPTY: 0,
 		MINE: 9,
-		OPEN: 10
+		OPEN: 10,
+		FLAG: 11,
+		MARKED : [1,2,3,4,5,6,7,8,10]
 	}
 }
 
@@ -25,6 +29,7 @@ Game.prototype = {
 
 		this.holder.addEventListener('contextmenu', function (e) {
 			e.preventDefault();
+			self.rightClickListener(e);
 		});
 
 		this.startGame();
@@ -33,6 +38,8 @@ Game.prototype = {
 	startGame: function () {
 		this.clearHolder();
 		this.createField();
+		this.flagCount = this.mineCount;
+		this.writeGameInfo();
 	},
 
 	createField: function () {
@@ -45,6 +52,12 @@ Game.prototype = {
 		this.drawer.draw(this.view, this.fieldSide);
 	},
 
+	writeGameInfo : function () {
+		var wrap = document.getElementById(this.gameInfoWrapId),
+			text = 'Flags left: ';
+		wrap.innerHTML = text + this.flagCount;
+	},
+
 	createEmptyGameField: function () {
 		var i,
 			numberOfCells = Math.pow(this.fieldSide, 2);
@@ -53,17 +66,6 @@ Game.prototype = {
 			this.game[i] = this.cellState.EMPTY;
 			this.view[i] = this.cellState.EMPTY;
 		}
-
-		//new version
-		//var i,j;
-		//
-		//for (i = 0; i < this.fieldSide; i++) {
-		//	this.game[i] = [];
-		//	for (j = 0; j < this.fieldSide; j++) {
-		//		this.game[i][j] = this.cellState.EMPTY;
-		//	}
-		//}
-
 	},
 
 	putMine: function () {
@@ -79,24 +81,6 @@ Game.prototype = {
 				mines--;
 			}
 		}
-
-		//new version
-		//var  x, y,
-		//	mines = this.mineCount;
-		//
-		//while(mines > 0) {
-		//	x = Math.floor((Math.random()*this.fieldSide));
-		//	y = Math.floor((Math.random()*this.fieldSide));
-		//
-		//	if (this.game[x][y] === 0) {
-		//		this.game[x][y] = this.cellState.MINE;
-		//
-		//		console.log(x, y);
-		//		mines--;
-		//	}
-		//}
-
-
 	},
 
 	calculateSiblingMines: function () {
@@ -119,9 +103,9 @@ Game.prototype = {
 		}
 	},
 
-	defineSiblingIndex : function (i) {
-		var w = this.fieldSide,
-			result;
+	getSiblingIndices : function (i) {
+		var w = this.fieldSide;
+
 		//sibling cell index
 		var sibling = {
 			left: i - 1,
@@ -140,26 +124,21 @@ Game.prototype = {
 	findSiblingMines: function (i) {
 		var mine = this.cellState.MINE,
 			sibling = this.findSiblings(i),
-			siblingIndex = this.defineSiblingIndex(i),
-			isMineSibling = {};
+			siblingIndex = this.getSiblingIndices(i),
+			isMineSibling = {},
+			key,
+			siblingsMineArray = [],
+			obj;
 
 		//sibling cell has a MINE
-
-		for (var key in sibling) {
+		for (key in sibling) {
 			isMineSibling[key] = sibling[key] && this.game[siblingIndex[key]] == mine;
 		}
 
 		//array with checked siblings whether they have a MINE
-		var siblingsMineArray = [
-			isMineSibling.left,
-			isMineSibling.topLeft,
-			isMineSibling.top,
-			isMineSibling.topRight,
-			isMineSibling.right,
-			isMineSibling.bottomRight,
-			isMineSibling.bottom,
-			isMineSibling.bottomLeft
-		];
+		for (obj in isMineSibling) {
+			siblingsMineArray.push(isMineSibling[obj])
+		}
 
 		return siblingsMineArray;
 
@@ -168,12 +147,18 @@ Game.prototype = {
 	findSiblings: function (i) {
 		var w = this.fieldSide,
 			result,
-			sibling = this.defineSiblingIndex(i),
+			sibling = this.getSiblingIndices(i),
 			difference,
 			currentCellX = i % w,
-			currentCellY = Math.floor(i / w);
+			currentCellY = Math.floor(i / w),
+			map = {},
+			key,
+			obj,
+			isSibling = {},
+			realDifferenceX,
+			realDifferenceY;
 
-
+		//Necessary difference between current cell's x, y and its siblings x, y to be siblings
 		difference = {
 			left: [-1, 0],
 			topLeft: [-1, -1],
@@ -185,56 +170,24 @@ Game.prototype = {
 			bottomLeft: [-1, 1]
 		};
 
-		//Sibling cell's X and Y
-		var map = {};
-
-		for (var key in sibling) {
+		//Difference between sibling cell's X and Y and current cell's X and Y
+		for (key in sibling) {
 			map[key] = [];
 			map[key].push((sibling[key] % w) - currentCellX);
 			map[key].push((Math.floor(sibling[key] / w) - currentCellY));
 		}
 
-		var isSibling = {};
+		//check real difference
+		for (obj in map) {
+			realDifferenceX = map[obj][0] == difference[obj][0];
+			realDifferenceY = map[obj][1] == difference[obj][1];
 
-		for (var obj in map) {
-			isSibling[obj] = (map[obj][0] == difference[obj][0]) && (map[obj][1] == difference[obj][1]);
+			isSibling[obj] = realDifferenceX && realDifferenceY;
 		}
 
 		result = isSibling;
 		return result;
-
 	},
-
-	//checkSiblings : function (values) {
-	//
-	//	var isSiblingCell,
-	//		result,
-	//		value;
-	//
-	//	//description of different types of values
-	//	value = {
-	//		sibling: [0],
-	//		row: [1],
-	//		column: [2],
-	//		diagonal: [3]
-	//	};
-	//
-	//
-	//	//gives sibling cells
-	//	isSiblingCell = {
-	//		left: values[value].left && this.game[sibling.left],
-	//		topLeft: isSiblingDiagonal.topLeft && this.game[sibling.topLeft],
-	//		top: isSiblingColumn.top && this.game[sibling.top],
-	//		topRight: isSiblingDiagonal.topRight && this.game[sibling.topRight],
-	//		right: isSiblingRow.right && this.game[sibling.right],
-	//		bottomRight: isSiblingDiagonal.bottomRight && this.game[sibling.bottomRight],
-	//		bottom: isSiblingColumn.bottom && this.game[sibling.bottom],
-	//		bottomLeft: isSiblingDiagonal.bottomLeft && this.game[sibling.bottomLeft]
-	//	};
-	//
-	//	result = isSiblingCell;
-	//	return result;
-	//},
 
 	clearHolder: function () {
 		this.holder.innerHTML = "";
@@ -243,82 +196,191 @@ Game.prototype = {
 	leftClickListener: function (e) {
 		var clickedCellPosition = this.defineCellPosition(e);
 
-		this.openClickedCell(clickedCellPosition.x, clickedCellPosition.y);
+		this.openClickedCell(clickedCellPosition);
+		this.checkCell(clickedCellPosition);
+	},
 
+	rightClickListener : function (e) {
+		var clickedCellPosition = this.defineCellPosition(e);
+
+		this.toggleFlag(clickedCellPosition);
 	},
 
 	defineCellPosition: function (e) {
-		var offSetX, offSetY, currentX, currentY, x, y;
+		var offSetX, offSetY, currentX, currentY, x, y, result;
 
 		offSetX = this.holder.offsetLeft;
 		offSetY = this.holder.offsetTop;
 		currentX = e.clientX - offSetX;
 		currentY = e.clientY - offSetY;
 
-		var result = {
-			x: Math.floor(currentX / this.drawer.cellSize.w),
-			y: Math.floor(currentY / this.drawer.cellSize.h)
-		};
+		x = Math.floor(currentX / this.drawer.cellSize.w);
+		y =Math.floor(currentY / this.drawer.cellSize.h);
+
+		result = y * this.fieldSide + x;
 
 		return result;
 	},
 
-	openClickedCell: function (x, y) {
-		var cellNumberInArray = y * this.fieldSide + x;
+	openClickedCell: function (cellNumberInArray) {
 
-		if (this.game[cellNumberInArray] == this.cellState.EMPTY) {
-			var k = this.openSiblingCells(cellNumberInArray);
-				//this.wave(k);
-
-		} else {
-			this.view[cellNumberInArray] = this.game[cellNumberInArray];
+		switch (this.game[cellNumberInArray]) {
+			case this.cellState.EMPTY:
+				this.openSiblingCells(cellNumberInArray);
+				break;
+			default:
+				this.view[cellNumberInArray] = this.game[cellNumberInArray];
 		}
 
 		this.drawer.draw(this.view, this.fieldSide);
 	},
 
 	openSiblingCells: function (i) {
-		var sibling = this.findSiblings(i),
-			siblingIndex = this.defineSiblingIndex(i),
-			mass = [];
+		var siblings /*= this.findSiblings(i)*/,
+			key,
+			siblingIndex,
+			isSibling,
+			isCellNotMine,
+			isCellNotFlag,
+			activeCellsToCheck = [];
 
-		for (var key in sibling) {
-			if(sibling[key] === true && this.game[siblingIndex[key]] < 9 && this.view[siblingIndex[key]] !== this.cellState.OPEN) {
+			activeCellsToCheck.push(i);
 
-				if (this.game[siblingIndex[key]] == this.cellState.EMPTY) {
-					this.view[siblingIndex[key]] = this.cellState.OPEN;
+		while (activeCellsToCheck.length) {
 
-					mass.push(siblingIndex[key]);
+			siblings = this.findSiblings(activeCellsToCheck[0]);
+			siblingIndex = this.getSiblingIndices(activeCellsToCheck[0]);
 
-					this.openSiblingCells(siblingIndex[key]);
+			for (key in siblings) {
+				isSibling = siblings[key] === true;
+				isCellNotMine = this.game[siblingIndex[key]] < this.cellState.MINE;
+				isCellNotFlag = this.view[siblingIndex[key]] !== this.cellState.FLAG;
 
-				} else if (this.game[siblingIndex[key]] !== this.cellState.EMPTY) {
-					this.view[siblingIndex[key]] = this.game[siblingIndex[key]];
+				if(isSibling && isCellNotMine && isCellNotFlag) {
+
+					if (this.game[siblingIndex[key]] == this.cellState.EMPTY) {
+
+						activeCellsToCheck.push(siblingIndex[key])
+						// todo rewrite recursion to plain cycle
+
+						this.view[siblingIndex[key]] = this.cellState.OPEN;
+						this.game[siblingIndex[key]] = this.cellState.OPEN;
+					} else {
+						this.view[siblingIndex[key]] = this.game[siblingIndex[key]];
+					}
+
+					//switch (this.game[siblingIndex[key]]) {
+					//	case this.cellState.EMPTY:
+					//		this.view[siblingIndex[key]] = this.cellState.OPEN;
+					//		this.game[siblingIndex[key]] = this.cellState.OPEN;
+					//		// todo rewrite recursion to plain cycle
+					//
+					//		activeCellsToCheck.push(siblingIndex[key]);
+					//
+					//		//this.openSiblingCells(siblingIndex[key]);
+					//		break;
+					//	default:
+					//		this.view[siblingIndex[key]] = this.game[siblingIndex[key]];
+					//}
 				}
-				//mass.push(siblingIndex[key]);
 			}
+			activeCellsToCheck.shift();
+			console.log(activeCellsToCheck);
 		}
+
+
+
+		//for (key in sibling) {
+		//	isSibling = sibling[key] === true;
+		//	isCellNotMine = this.game[siblingIndex[key]] < this.cellState.MINE;
+		//	isCellNotFlag = this.view[siblingIndex[key]] !== this.cellState.FLAG;
+		//
+		//	if(isSibling && isCellNotMine && isCellNotFlag) {
+		//
+		//		switch (this.game[siblingIndex[key]]) {
+		//			case this.cellState.EMPTY:
+		//				this.view[siblingIndex[key]] = this.cellState.OPEN;
+		//				this.game[siblingIndex[key]] = this.cellState.OPEN;
+		//				// todo rewrite recursion to plain cycle
+		//				this.openSiblingCells(siblingIndex[key]);
+		//				break;
+		//			default:
+		//				this.view[siblingIndex[key]] = this.game[siblingIndex[key]];
+		//		}
+		//	}
+		//}
 		this.view[i] = this.cellState.OPEN;
+	},
 
-		return mass;
-	}/*,
+	toggleFlag :function (i) {
 
-	wave : function (k) {
-		var m = [];
+		var cellIsMarked = this.cellState.MARKED.indexOf(this.view[i]) >= 0;
 
-		for (var j = 0; j < k.length; j++) {
-			m.push(this.openSiblingCells(k[j]));
-			console.log(m);
+		if (cellIsMarked) {
+			alert('Cell is already opened!');
+			return false;
 		}
 
-		k = m;
-		//this.wave(k);
-	}*/
+		// todo simplify this
+		switch (this.view[i]) {
+				case this.cellState.FLAG:
+					this.view[i] = this.cellState.EMPTY;
+					this.flagCount +=1;
+					this.writeGameInfo();
+					break;
+				default:
+					if(this.flagCount > 0) {
+						this.view[i] = this.cellState.FLAG;
+						this.flagCount -=1;
+						this.writeGameInfo();
+					} else {
+						alert('There are no flags left!');
+					}
+			}
 
+		this.drawer.draw(this.view, this.fieldSide);
+	},
+
+	checkCell : function (cellNumberInArray) {
+		var isGameSolved;
+
+		if(this.game[cellNumberInArray] == this.cellState.MINE) {
+			this.restartGame('You loose!');
+		}
+
+		isGameSolved = this.isCheckWin();
+
+		if(isGameSolved) {
+			this.restartGame('You win!');
+		}
+	},
+
+	restartGame : function (message) {
+		alert(message);
+		this.startGame();
+	},
+
+	isCheckWin : function () {
+		var isGameSolved = true,
+			i = 0;
+
+		// todo use right instrument
+		while (i < this.game.length && isGameSolved) {
+			var game = this.game[i],
+				view = this.view[i],
+				isMineCell = game == this.cellState.MINE && view !== this.checkCell.MINE;
+
+			isGameSolved = ((game == view) || isMineCell);
+
+			i++;
+		}
+
+		return isGameSolved;
+	}
 };
 
 function pageLoaded() {
-	var game = new Game('canvas');
+	var game = new Game('canvas', 'game-info');
 
 	game.init();
 }

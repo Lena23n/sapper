@@ -46,55 +46,47 @@ Drawer.prototype = {
 
 			this.drawCell(text, x, y);
 		}
-
-		//new version
-
-		//var i, j, x, y, text;
-		//
-		//for (i = 0; i < fieldSide; i++) {
-		//	for(j = 0; j < fieldSide; j++) {
-		//		x = i*this.cellSize.w;
-		//		y = j*this.cellSize.h;
-		//		text = array[i][j];
-		//
-		//		this.drawCell(text, x, y);
-		//	}
-		//}
-
 	},
 
 	drawCell : function (text, x ,y) {
-
+		var radius = this.cellSize.w/2;
 		this.context.font = "14px Arial";
 		this.context.textBaseline = 'middle';
 		this.context.textAlign = "center";
 
-		if (text === this.cellState.MINE) {
-			var radius = this.cellSize.w/2;
-
-			this.context.beginPath();
-			this.context.arc(x+radius, y+radius, radius*0.7, 0, 2 * Math.PI, false);
-			this.context.fillStyle = 'red';
-			this.context.fill();
-			this.context.lineWidth = 1;
-
-		} else if (text === this.cellState.EMPTY) {
-			this.context.fillStyle = '#222222';
-			this.context.fillRect(x, y, this.cellSize.w, this.cellSize.h);
-		} else if (text === this.cellState.OPEN) {
-			this.context.fillStyle = '#666666';
-			this.context.fillRect(x, y, this.cellSize.w, this.cellSize.h);
-		} else {
-			this.context.fillStyle = '#444444';
-			this.context.fillRect(x, y, this.cellSize.w, this.cellSize.h);
-			this.context.fillStyle = "#ffffff";
-			this.context.fillText(text, x+14, y+14);
+		switch (text) {
+			case this.cellState.MINE:
+				this.context.beginPath();
+				this.context.arc(x+radius, y+radius, radius*0.7, 0, 2 * Math.PI, false);
+				this.context.fillStyle = 'red';
+				this.context.fill();
+				this.context.lineWidth = 1;
+				break;
+			case this.cellState.FLAG:
+				this.context.fillStyle = 'red';
+				this.context.beginPath();
+				this.context.moveTo(x+6, y + (this.cellSize.h/2));
+				this.context.lineTo((x+this.cellSize.w*0.7), y+4);
+				this.context.lineTo((x+this.cellSize.w*0.7), y + this.cellSize.h - 4);
+				this.context.fill();
+				//this.context.fillRect(x, y, this.cellSize.w, this.cellSize.h);
+				break;
+			case this.cellState.EMPTY:
+				this.context.fillStyle = '#222222';
+				this.context.fillRect(x, y, this.cellSize.w, this.cellSize.h);
+				break;
+			case this.cellState.OPEN:
+				this.context.fillStyle = '#666666';
+				this.context.fillRect(x, y, this.cellSize.w, this.cellSize.h);
+				break;
+			default:
+				this.context.fillStyle = '#444444';
+				this.context.fillRect(x, y, this.cellSize.w, this.cellSize.h);
+				this.context.fillStyle = "#ffffff";
+				this.context.fillText(text, x+14, y+14);
 		}
-
 
 		this.context.strokeStyle = 'grey';
 		this.context.strokeRect(x, y, this.cellSize.w, this.cellSize.h);
-
-
 	}
 };
